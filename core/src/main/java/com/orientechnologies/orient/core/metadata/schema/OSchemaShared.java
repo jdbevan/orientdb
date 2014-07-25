@@ -1002,7 +1002,6 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
 
   @Override
   public int addCachedName(String name) {
-
     if (readWriteLock.isWriteLocked())
       return -1;
     Integer index;
