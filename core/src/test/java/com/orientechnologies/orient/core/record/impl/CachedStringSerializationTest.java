@@ -7,7 +7,10 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+<<<<<<< HEAD
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+=======
+>>>>>>> implemented first cached string support in the binary serialization.
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializer;
@@ -34,7 +37,10 @@ public class CachedStringSerializationTest {
 
   @Test
   public void testCachedSerialization() {
+<<<<<<< HEAD
     ODatabaseRecordThreadLocal.INSTANCE.set(databaseDocument);
+=======
+>>>>>>> implemented first cached string support in the binary serialization.
     ODocument doc = new ODocument();
     doc.field("test", "aTest");
     doc.field("test1", 10);
