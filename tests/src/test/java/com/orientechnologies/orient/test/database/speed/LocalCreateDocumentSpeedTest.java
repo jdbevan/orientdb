@@ -25,6 +25,7 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.intent.OIntentMassiveInsert;
 import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.serialization.serializer.record.binary.ORecordSerializerBinary;
 import com.orientechnologies.orient.core.tx.OTransaction.TXTYPE;
 import com.orientechnologies.orient.test.database.base.OrientMonoThreadTest;
 
@@ -47,7 +48,8 @@ public class LocalCreateDocumentSpeedTest extends OrientMonoThreadTest {
   @Override
   @Test(enabled = false)
   public void init() {
-    database = new ODatabaseDocumentTx(System.getProperty("url"));
+    ODatabaseDocumentTx.setDefaultSerializer(new ORecordSerializerBinary());
+    database = new ODatabaseDocumentTx("plocal:target/db/test");
     if (database.exists()) {
       database.open("admin", "admin");
       database.drop();
@@ -56,7 +58,11 @@ public class LocalCreateDocumentSpeedTest extends OrientMonoThreadTest {
     database.create();
     OSchema schema = database.getMetadata().getSchema();
     schema.createClass("Account");
-
+    schema.addCachedName("id");
+    schema.addCachedName("name");
+    schema.addCachedName("surname");
+    schema.addCachedName("birthDate");
+    schema.addCachedName("salary");
     record = database.newInstance();
 
     database.declareIntent(new OIntentMassiveInsert());

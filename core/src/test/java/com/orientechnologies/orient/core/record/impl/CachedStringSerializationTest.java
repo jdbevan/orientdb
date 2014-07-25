@@ -7,6 +7,7 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializer;
@@ -33,6 +34,7 @@ public class CachedStringSerializationTest {
 
   @Test
   public void testCachedSerialization() {
+    ODatabaseRecordThreadLocal.INSTANCE.set(databaseDocument);
     ODocument doc = new ODocument();
     doc.field("test", "aTest");
     doc.field("test1", 10);

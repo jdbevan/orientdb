@@ -1003,9 +1003,15 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
 
   @Override
   public int addCachedName(String name) {
-    cachedNames.add(name);
-    int index = cachedNames.indexOf(name);
-    cachedNamesIndex.put(name, index);
+    Integer index;
+    if ((index = cachedNamesIndex.get(name)) == null) {
+      acquireSchemaWriteLock();
+      cachedNames.add(name);
+      int id = cachedNames.indexOf(name);
+      cachedNamesIndex.put(name, id);
+      releaseSchemaWriteLock();
+      return id;
+    }
     return index;
   }
 
