@@ -19,7 +19,6 @@ import java.util.Collection;
 import java.util.Set;
 
 import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.storage.OStorage;
 import com.orientechnologies.orient.core.type.ODocumentWrapper;
 
 public interface OSchema {
@@ -97,5 +96,12 @@ public interface OSchema {
    */
   public Set<OClass> getClassesRelyOnCluster(String iClusterName);
 
-	public OClass getClassByClusterId(int clusterId);
+  public OClass getClassByClusterId(int clusterId);
+
+  public int addCachedName(String name);
+
+  public int getCachedNameId(String name);
+
+  public String getCachedNameById(int id);
+
 }

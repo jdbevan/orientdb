@@ -22,11 +22,13 @@ import com.orientechnologies.orient.core.db.record.OTrackedList;
 import com.orientechnologies.orient.core.db.record.OTrackedMap;
 import com.orientechnologies.orient.core.db.record.OTrackedSet;
 import com.orientechnologies.orient.core.db.record.ridbag.ORidBag;
+import com.orientechnologies.orient.core.exception.OSerializationException;
 import com.orientechnologies.orient.core.id.OClusterPositionLong;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OProperty;
+import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.ORecordInternal;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -37,9 +39,10 @@ import com.orientechnologies.orient.core.util.ODateHelper;
 
 public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
 
-  private static final ORecordId NULL_RECORD_ID   = new ORecordId(-2, new OClusterPositionLong(-1));
-  private static final long      MILLISEC_PER_DAY = 86400000;
+  private static final ORecordId NULL_RECORD_ID     = new ORecordId(-2, new OClusterPositionLong(-1));
+  private static final long      MILLISEC_PER_DAY   = 86400000;
   private Charset                utf8;
+  private ThreadLocal<Boolean>   enableOptimization = new ThreadLocal<Boolean>();
 
   public ORecordSerializerBinaryV0() {
     utf8 = Charset.forName("UTF-8");
@@ -52,7 +55,8 @@ public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
       document.setClassNameIfExists(className);
     int last = 0;
     String field;
-    while ((field = readString(bytes)).length() != 0) {
+    final OSchema schema = findSchema();
+    while ((field = readOptimizedString(bytes, schema)).length() != 0) {
       if (document.containsField(field)) {
         // SKIP FIELD
         bytes.skip(OIntegerSerializer.INT_SIZE + 1);
@@ -81,9 +85,54 @@ public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
       bytes.offset = last;
   }
 
+  private OSchema findSchema() {
+    final ODatabaseRecord db = ODatabaseRecordThreadLocal.INSTANCE.getIfDefined();
+    if (db != null && db.getMetadata() != null)
+      return db.getMetadata().getSchema();
+    return null;
+  }
+
+  private String readOptimizedString(final BytesContainer bytes, final OSchema schema) {
+    final int len = OVarIntSerializer.readAsInteger(bytes);
+    if (len < 0) {
+      if (schema == null)
+        throw new OSerializationException("Error on the deserialization the record depends on the schema that was not found");
+      final String res = schema.getCachedNameById(len * -1 -1);
+      if (res == null)
+        throw new OSerializationException("Error on the deserialization the cached string with id:" + (len * -1) + "was not found");
+      return res;
+    } else {
+      final String res = new String(bytes.bytes, bytes.offset, len, utf8);
+      bytes.skip(len);
+      return res;
+    }
+  }
+
+  private int writeOptimizedString(final BytesContainer bytes, final String toWrite, final OSchema schema) {
+    int pos;
+    if (schema != null && enableOptimization.get() && (pos = schema.getCachedNameId(toWrite)) != -1) {
+      return OVarIntSerializer.write(bytes, (pos+1) * -1);
+    } else {
+      final byte[] nameBytes = toWrite.getBytes(utf8);
+      final int pointer = OVarIntSerializer.write(bytes, nameBytes.length);
+      final int start = bytes.alloc(nameBytes.length);
+      System.arraycopy(nameBytes, 0, bytes.bytes, start, nameBytes.length);
+      return pointer;
+    }
+  }
+
+  private void checkSchema(OSchema schema, ODocument document) {
+    if (schema != null && document.getIdentity().equals(schema.getIdentity()))
+      enableOptimization.set(false);
+    else
+      enableOptimization.set(true);
+  }
+
   @SuppressWarnings("unchecked")
   @Override
   public void serialize(ODocument document, BytesContainer bytes) {
+    final OSchema schema = findSchema();
+    checkSchema(schema, document);
     if (document.getClassName() != null)
       writeString(bytes, document.getClassName());
     else
@@ -92,7 +141,7 @@ public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
     int i = 0;
     Entry<String, ?> values[] = new Entry[document.fields()];
     for (Entry<String, Object> entry : document) {
-      writeString(bytes, entry.getKey());
+      writeOptimizedString(bytes, entry.getKey(), schema);
       pos[i] = bytes.alloc(OIntegerSerializer.INT_SIZE + 1);
       values[i] = entry;
       i++;
@@ -112,7 +161,6 @@ public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
         writeOType(bytes, (pos[i] + OIntegerSerializer.INT_SIZE), type);
       }
     }
-
   }
 
   private OType readOType(final BytesContainer bytes) {

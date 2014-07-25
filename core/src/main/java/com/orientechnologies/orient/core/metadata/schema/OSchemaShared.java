@@ -15,6 +15,17 @@
  */
 package com.orientechnologies.orient.core.metadata.schema;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import com.orientechnologies.common.concur.resource.OCloseable;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.types.OModifiableInteger;
@@ -39,13 +50,13 @@ import com.orientechnologies.orient.core.metadata.security.ODatabaseSecurityReso
 import com.orientechnologies.orient.core.metadata.security.ORole;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
-import com.orientechnologies.orient.core.storage.*;
+import com.orientechnologies.orient.core.storage.OAutoshardedStorage;
+import com.orientechnologies.orient.core.storage.OCluster;
+import com.orientechnologies.orient.core.storage.OStorage;
+import com.orientechnologies.orient.core.storage.OStorageEmbedded;
+import com.orientechnologies.orient.core.storage.OStorageProxy;
 import com.orientechnologies.orient.core.type.ODocumentWrapper;
 import com.orientechnologies.orient.core.type.ODocumentWrapperNoClass;
-
-import java.util.*;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Shared schema class. It's shared by all the database instances that point to the same storage.
@@ -67,6 +78,10 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
 
   private final OClusterSelectionFactory        clusterSelectionFactory = new OClusterSelectionFactory();
 
+  private List<String>                          cachedNames             = Collections.synchronizedList(new ArrayList<String>());
+
+  private final transient Map<String, Integer>  cachedNamesIndex        = Collections
+                                                                            .synchronizedMap(new HashMap<String, Integer>());
   private final ThreadLocal<OModifiableInteger> modificationCounter     = new ThreadLocal<OModifiableInteger>() {
                                                                           @Override
                                                                           protected OModifiableInteger initialValue() {
@@ -745,6 +760,13 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
           cls.setSuperClassInternal(superClass);
         }
       }
+      List<String> names = document.field("cachedNames");
+      if (names != null) {
+        cachedNames = Collections.synchronizedList(names);
+        for (int i = 0; i < names.size(); i++) {
+          cachedNamesIndex.put(names.get(i), i);
+        }
+      }
     } finally {
       modificationCounter.get().decrement();
       readWriteLock.writeLock().unlock();
@@ -769,6 +791,7 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
           cc.add(((OClassImpl) c).toStream());
 
         document.field("classes", cc, OType.EMBEDDEDSET);
+        document.field("cachedNames", cachedNames, OType.EMBEDDEDLIST);
 
       } finally {
         document.setInternalStatus(ORecordElement.STATUS.LOADED);
@@ -977,4 +1000,26 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
   private ODatabaseRecord getDatabase() {
     return ODatabaseRecordThreadLocal.INSTANCE.get();
   }
+
+  @Override
+  public int addCachedName(String name) {
+    cachedNames.add(name);
+    int index = cachedNames.indexOf(name);
+    cachedNamesIndex.put(name, index);
+    return index;
+  }
+
+  @Override
+  public String getCachedNameById(int id) {
+    return cachedNames.get(id);
+  }
+
+  @Override
+  public int getCachedNameId(String name) {
+    Integer res = cachedNamesIndex.get(name);
+    if (res == null)
+      return -1;
+    return res;
+  }
+
 }

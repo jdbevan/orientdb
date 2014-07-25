@@ -65,17 +65,16 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
     setCurrentDatabaseInThreadLocal();
     return delegate.getOrCreateClass(iClassName);
   }
-  
+
   public OClass getOrCreateClass(final String iClassName, final OClass iSuperClass) {
-	  setCurrentDatabaseInThreadLocal();
-	  return delegate.getOrCreateClass(iClassName, iSuperClass);
+    setCurrentDatabaseInThreadLocal();
+    return delegate.getOrCreateClass(iClassName, iSuperClass);
   }
 
   public OClass createClass(final String iClassName, final OClass iSuperClass) {
     setCurrentDatabaseInThreadLocal();
     return delegate.createClass(iClassName, iSuperClass, (int[]) null);
   }
-
 
   public OClass createClass(final String iClassName, final int iDefaultClusterId) {
     setCurrentDatabaseInThreadLocal();
@@ -172,8 +171,24 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
     return delegate.getClassesRelyOnCluster(iClusterName);
   }
 
-	@Override
-	public OClass getClassByClusterId(int clusterId) {
-		return delegate.getClassByClusterId(clusterId);
-	}
+  @Override
+  public OClass getClassByClusterId(int clusterId) {
+    return delegate.getClassByClusterId(clusterId);
+  }
+
+  @Override
+  public int addCachedName(String name) {
+    return delegate.addCachedName(name);
+  }
+
+  @Override
+  public String getCachedNameById(int id) {
+    return delegate.getCachedNameById(id);
+  }
+
+  @Override
+  public int getCachedNameId(String name) {
+    return delegate.getCachedNameId(name);
+  }
+
 }

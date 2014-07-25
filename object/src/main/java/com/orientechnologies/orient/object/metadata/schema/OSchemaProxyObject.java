@@ -257,14 +257,16 @@ public class OSchemaProxyObject implements OSchema {
 
         case LINK:
           Class<?> linkedClazz = OObjectEntitySerializer.getSpecifiedLinkedType(f);
-           if (linkedClazz==null)  linkedClazz = f.getType();
+          if (linkedClazz == null)
+            linkedClazz = f.getType();
           generateLinkProperty(database, schema, field, t, linkedClazz);
           break;
         case LINKLIST:
         case LINKMAP:
         case LINKSET:
-           linkedClazz= OObjectEntitySerializer.getSpecifiedMultiLinkedType(f);
-          if (linkedClazz==null) linkedClazz = OReflectionHelper.getGenericMultivalueType(f);
+          linkedClazz = OObjectEntitySerializer.getSpecifiedMultiLinkedType(f);
+          if (linkedClazz == null)
+            linkedClazz = OReflectionHelper.getGenericMultivalueType(f);
           if (linkedClazz != null)
             generateLinkProperty(database, schema, field, t, linkedClazz);
           break;
@@ -403,6 +405,21 @@ public class OSchemaProxyObject implements OSchema {
       linkedClass = database.getMetadata().getSchema().getClass(linkedClazz);
     }
     schema.createProperty(field, t, linkedClass);
+  }
+
+  @Override
+  public String getCachedNameById(int id) {
+    return underlying.getCachedNameById(id);
+  }
+
+  @Override
+  public int addCachedName(String name) {
+    return underlying.addCachedName(name);
+  }
+
+  @Override
+  public int getCachedNameId(String name) {
+    return underlying.getCachedNameId(name);
   }
 
 }
