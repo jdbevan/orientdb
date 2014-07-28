@@ -878,7 +878,10 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
     setDirty();
 
     try {
+      List<String> oldNames = cachedNames;
+      cachedNames = null;
       super.save(OMetadataDefault.CLUSTER_INTERNAL_NAME);
+      cachedNames = oldNames;
     } catch (OConcurrentModificationException e) {
       reload(null, true);
       throw e;
