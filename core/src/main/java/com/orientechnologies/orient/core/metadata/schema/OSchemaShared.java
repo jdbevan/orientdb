@@ -879,7 +879,10 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
     setDirty();
 
     try {
+      List<String> oldNames = cachedNames;
+      cachedNames = null;
       super.save(OMetadataDefault.CLUSTER_INTERNAL_NAME);
+      cachedNames = oldNames;
     } catch (OConcurrentModificationException e) {
       reload(null, true);
       throw e;
@@ -1003,6 +1006,8 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
 
   @Override
   public int addCachedName(String name) {
+    if (cachedNames == null)
+      return -1;
     Integer index;
     if ((index = cachedNamesIndex.get(name)) == null) {
       acquireSchemaWriteLock();
@@ -1017,11 +1022,15 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
 
   @Override
   public String getCachedNameById(int id) {
+    if (cachedNames == null)
+      return null;
     return cachedNames.get(id);
   }
 
   @Override
   public int getCachedNameId(String name) {
+    if (cachedNames == null)
+      return -1;
     Integer res = cachedNamesIndex.get(name);
     if (res == null)
       return -1;

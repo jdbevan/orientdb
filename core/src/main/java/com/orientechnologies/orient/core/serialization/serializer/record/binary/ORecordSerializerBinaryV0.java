@@ -39,10 +39,9 @@ import com.orientechnologies.orient.core.util.ODateHelper;
 
 public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
 
-  private static final ORecordId NULL_RECORD_ID     = new ORecordId(-2, new OClusterPositionLong(-1));
-  private static final long      MILLISEC_PER_DAY   = 86400000;
+  private static final ORecordId NULL_RECORD_ID   = new ORecordId(-2, new OClusterPositionLong(-1));
+  private static final long      MILLISEC_PER_DAY = 86400000;
   private Charset                utf8;
-  private ThreadLocal<Boolean>   enableOptimization = new ThreadLocal<Boolean>();
 
   public ORecordSerializerBinaryV0() {
     utf8 = Charset.forName("UTF-8");
@@ -97,7 +96,7 @@ public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
     if (len < 0) {
       if (schema == null)
         throw new OSerializationException("Error on the deserialization the record depends on the schema that was not found");
-      final String res = schema.getCachedNameById(len * -1 -1);
+      final String res = schema.getCachedNameById(len * -1 - 1);
       if (res == null)
         throw new OSerializationException("Error on the deserialization the cached string with id:" + (len * -1) + "was not found");
       return res;
@@ -110,8 +109,8 @@ public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
 
   private int writeOptimizedString(final BytesContainer bytes, final String toWrite, final OSchema schema) {
     int pos;
-    if (schema != null && enableOptimization.get() && (pos = schema.getCachedNameId(toWrite)) != -1) {
-      return OVarIntSerializer.write(bytes, (pos+1) * -1);
+    if (schema != null && (pos = schema.getCachedNameId(toWrite)) != -1) {
+      return OVarIntSerializer.write(bytes, (pos + 1) * -1);
     } else {
       final byte[] nameBytes = toWrite.getBytes(utf8);
       final int pointer = OVarIntSerializer.write(bytes, nameBytes.length);
@@ -121,18 +120,10 @@ public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
     }
   }
 
-  private void checkSchema(OSchema schema, ODocument document) {
-    if (schema != null && document.getIdentity().equals(schema.getIdentity()))
-      enableOptimization.set(false);
-    else
-      enableOptimization.set(true);
-  }
-
   @SuppressWarnings("unchecked")
   @Override
   public void serialize(ODocument document, BytesContainer bytes) {
     final OSchema schema = findSchema();
-    checkSchema(schema, document);
     if (document.getClassName() != null)
       writeString(bytes, document.getClassName());
     else
