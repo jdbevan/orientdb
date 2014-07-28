@@ -71,7 +71,7 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
 
   private final boolean                         clustersCanNotBeSharedAmongClasses;
 
-  private final ReadWriteLock                   readWriteLock           = new ReentrantReadWriteLock();
+  private final ReentrantReadWriteLock          readWriteLock           = new ReentrantReadWriteLock();
 
   private final Map<String, OClass>             classes                 = new HashMap<String, OClass>();
   private final Map<Integer, OClass>            clustersToClasses       = new HashMap<Integer, OClass>();
@@ -879,10 +879,7 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
     setDirty();
 
     try {
-      List<String> oldNames = cachedNames;
-      cachedNames = null;
       super.save(OMetadataDefault.CLUSTER_INTERNAL_NAME);
-      cachedNames = oldNames;
     } catch (OConcurrentModificationException e) {
       reload(null, true);
       throw e;
@@ -1006,7 +1003,7 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
 
   @Override
   public int addCachedName(String name) {
-    if (cachedNames == null)
+    if (readWriteLock.isWriteLocked())
       return -1;
     Integer index;
     if ((index = cachedNamesIndex.get(name)) == null) {
@@ -1022,14 +1019,14 @@ public class OSchemaShared extends ODocumentWrapperNoClass implements OSchema, O
 
   @Override
   public String getCachedNameById(int id) {
-    if (cachedNames == null)
+    if (readWriteLock.isWriteLocked())
       return null;
     return cachedNames.get(id);
   }
 
   @Override
   public int getCachedNameId(String name) {
-    if (cachedNames == null)
+    if (readWriteLock.isWriteLocked())
       return -1;
     Integer res = cachedNamesIndex.get(name);
     if (res == null)
