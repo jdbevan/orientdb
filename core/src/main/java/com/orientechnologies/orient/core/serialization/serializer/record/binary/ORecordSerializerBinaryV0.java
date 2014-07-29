@@ -86,7 +86,7 @@ public class ORecordSerializerBinaryV0 implements ODocumentSerializer {
 
   private OSchema findSchema() {
     final ODatabaseRecord db = ODatabaseRecordThreadLocal.INSTANCE.getIfDefined();
-    if (db != null && db.getMetadata() != null)
+    if (db != null && !db.isClosed() && db.getMetadata() != null)
       return db.getMetadata().getSchema();
     return null;
   }
