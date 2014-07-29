@@ -1,7 +1,6 @@
 package com.orientechnologies.orient.core.record.impl;
 
-import junit.framework.Assert;
-
+import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
