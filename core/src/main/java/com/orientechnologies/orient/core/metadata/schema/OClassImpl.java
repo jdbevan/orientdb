@@ -1526,12 +1526,23 @@ public class OClassImpl extends ODocumentWrapperNoClass implements OClass {
       throw new OSchemaException("'Internal' schema modification methods can be used only inside of embedded database");
   }
 
-  private void setClusterSelectionInternal(final String clusterSelection) {
+  public void setClusterSelectionInternal(final String clusterSelection) {
     acquireSchemaWriteLock();
     try {
       checkEmbedded();
 
       this.clusterSelection = owner.getClusterSelectionFactory().newInstance(clusterSelection);
+    } finally {
+      releaseSchemaWriteLock();
+    }
+  }
+
+
+  public void setClusterSelectionInternal(final OClusterSelectionStrategy clusterSelection) {
+    acquireSchemaWriteLock();
+    try {
+      checkEmbedded();
+      this.clusterSelection = clusterSelection;
     } finally {
       releaseSchemaWriteLock();
     }

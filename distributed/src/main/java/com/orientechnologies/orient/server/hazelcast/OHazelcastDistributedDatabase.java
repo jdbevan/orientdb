@@ -25,6 +25,9 @@ import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.OScenarioThreadLocal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.core.metadata.schema.OClassImpl;
+import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.core.metadata.security.OSecurity;
 import com.orientechnologies.orient.core.metadata.security.OSecurityNull;
 import com.orientechnologies.orient.core.metadata.security.OUser;
@@ -305,11 +308,17 @@ public class OHazelcastDistributedDatabase implements ODistributedDatabase {
           ODistributedAbstractPlugin.REPLICATOR_USER);
       database = (ODatabaseDocumentTx) manager.getServerInstance().openDatabase("document", databaseName, replicatorUser.name,
           replicatorUser.password);
+
+      injectClusterSelectionStrategy();
+
     } else if (database.isClosed()) {
       // DATABASE CLOSED, REOPEN IT
       final OServerUserConfiguration replicatorUser = manager.getServerInstance().getUser(
           ODistributedAbstractPlugin.REPLICATOR_USER);
       database.open(replicatorUser.name, replicatorUser.password);
+
+      injectClusterSelectionStrategy();
+
     } else {
       // After initialize database, create replicator user in DB and reset database with OSecurityShared instead of OSecurityNull
       OSecurity security = database.getMetadata().getSecurity();
@@ -320,6 +329,17 @@ public class OHazelcastDistributedDatabase implements ODistributedDatabase {
         database = (ODatabaseDocumentTx) manager.getServerInstance().openDatabase("document", databaseName, replicatorUser.name,
             replicatorUser.password);
       }
+    }
+  }
+
+  protected void injectClusterSelectionStrategy(){
+    // OVERWRITE CLUSTER SELECTION STRATEGY
+    final String nodeName = getLocalNodeName();
+    final ODistributedConfiguration dbCfg = manager.getDatabaseConfiguration(databaseName);
+
+    final OSchema schema = database.getMetadata().getSchema();
+    for (OClass c : schema.getClasses()) {
+      ((OClassImpl) c).setClusterSelectionInternal(new OLocalClusterStrategy(nodeName, dbCfg, c));
     }
   }
 
@@ -659,21 +679,33 @@ public class OHazelcastDistributedDatabase implements ODistributedDatabase {
     try {
       // GET DATABASE CFG
       final ODistributedConfiguration cfg = manager.getDatabaseConfiguration(databaseName);
-      if (cfg.isHotAlignment())
-        // DON'T REMOVE THE NODE BECAUSE HOT-ALIGNMENT IS ON
-        return;
 
-      final List<String> foundPartition = cfg.removeNodeInServerList(iNode, iForce);
-      if (foundPartition != null) {
-        ODistributedServerLog.info(this, manager.getLocalNodeName(), null, ODistributedServerLog.DIRECTION.NONE,
-            "removing node '%s' in partition: db=%s %s", iNode, databaseName, foundPartition);
+      final List<String> foundPartition;
 
-        msgService.removeQueue(OHazelcastDistributedMessageService.getRequestQueueName(iNode, databaseName));
-        manager.updateCachedDatabaseConfiguration(databaseName, cfg.serialize(), true, true);
+      if (!cfg.isHotAlignment()) {
+        foundPartition = cfg.removeNodeInServerList(iNode, iForce);
+        if (foundPartition != null) {
+          ODistributedServerLog.info(this, manager.getLocalNodeName(), null, ODistributedServerLog.DIRECTION.NONE,
+              "removing node '%s' in partitions: db=%s %s", iNode, databaseName, foundPartition);
+
+          msgService.removeQueue(OHazelcastDistributedMessageService.getRequestQueueName(iNode, databaseName));
+        }
+      } else {
+        // CHECK CLUSTER MASTERSHIP ASSIGNMENT
+        foundPartition = cfg.removeMasterServer(iNode);
+        if (foundPartition != null) {
+          ODistributedServerLog.info(this, manager.getLocalNodeName(), null, ODistributedServerLog.DIRECTION.NONE,
+              "changed mastership of partitions: db=%s %s", databaseName, foundPartition);
+        }
       }
+
+      if (foundPartition != null)
+        // CHANGED: RE-DEPLOY IT
+        manager.updateCachedDatabaseConfiguration(databaseName, cfg.serialize(), true, true);
+
     } catch (Exception e) {
       ODistributedServerLog.debug(this, manager.getLocalNodeName(), null, ODistributedServerLog.DIRECTION.NONE,
-          "unable to remove node '%s' in distributed configuration, db=%s", e, iNode, databaseName);
+          "unable to remove node or change mastership for '%s' in distributed configuration, db=%s", e, iNode, databaseName);
     }
   }
 

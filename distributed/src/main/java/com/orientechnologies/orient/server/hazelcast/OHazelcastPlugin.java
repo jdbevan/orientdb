@@ -876,10 +876,7 @@ public class OHazelcastPlugin extends ODistributedAbstractPlugin implements Memb
         final OHazelcastDistributedDatabase db = messageService.registerDatabase(databaseName).configureDatabase(hotAlignment,
             hotAlignment);
 
-        if (!db.isRestoringMessages())
-          // NO PENDING MESSAGE, SET IT ONLINE
-          db.setOnline();
-        else
+        if (db.isRestoringMessages())
           db.initDatabaseInstance();
       }
     }
@@ -917,7 +914,8 @@ public class OHazelcastPlugin extends ODistributedAbstractPlugin implements Memb
     return chunk.buffer.length;
   }
 
-  protected void installDatabaseOnLocalNode(final OHazelcastDistributedDatabase distrDatabase, final String databaseName, final String dbPath, final String iNode, final String iDatabaseCompressedFile) {
+  protected void installDatabaseOnLocalNode(final OHazelcastDistributedDatabase distrDatabase, final String databaseName,
+      final String dbPath, final String iNode, final String iDatabaseCompressedFile) {
     ODistributedServerLog.warn(this, getLocalNodeName(), iNode, DIRECTION.IN, "installing database '%s' to: %s...", databaseName,
         dbPath);
 

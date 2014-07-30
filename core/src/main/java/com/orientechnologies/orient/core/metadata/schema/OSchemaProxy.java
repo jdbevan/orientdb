@@ -18,6 +18,7 @@ package com.orientechnologies.orient.core.metadata.schema;
 import com.orientechnologies.orient.core.db.record.ODatabaseRecord;
 import com.orientechnologies.orient.core.db.record.OProxedResource;
 import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.core.metadata.schema.clusterselection.OClusterSelectionFactory;
 import com.orientechnologies.orient.core.storage.OStorage.CLUSTER_TYPE;
 import com.orientechnologies.orient.core.type.ODocumentWrapper;
 
@@ -181,4 +182,9 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
 	public OClass getClassByClusterId(int clusterId) {
 		return delegate.getClassByClusterId(clusterId);
 	}
+
+  @Override
+  public OClusterSelectionFactory getClusterSelectionFactory() {
+    return delegate.getClusterSelectionFactory();
+  }
 }
